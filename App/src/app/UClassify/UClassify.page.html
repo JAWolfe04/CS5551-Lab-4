@@ -1,0 +1,27 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      UClassify
+    </ion-title>
+    <ion-button slot="end" color="light" (click)="logout()">Logout</ion-button>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item-divider>
+    <ion-label >Enter Text: </ion-label>
+    <ion-input type="text" placeholder="Statement" [(ngModel)]="searchTerm"></ion-input>
+    <ion-button (click)="btnClick()">Submit</ion-button>
+  </ion-item-divider>
+
+  <ion-card *ngIf="item">
+    <ion-card-header>
+      <ion-card-title>
+        Statement Results
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content text-center>
+      The statement is {{item.positive * 100}}% positive and {{item.negative * 100}}% negative.
+    </ion-card-content>
+  </ion-card>
+</ion-content>
