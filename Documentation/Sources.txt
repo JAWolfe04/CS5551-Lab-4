@@ -1,0 +1,1233 @@
+Server.js
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//------------------------------------------------------------------------------------------------------------------
+"use strict";
+const  express  =  require('express');
+const  bodyParser  =  require('body-parser');
+const cors = require('cors')
+const  sqlite3  =  require('sqlite3').verbose();
+const  jwt  =  require('jsonwebtoken');
+const  bcrypt  =  require('bcryptjs');
+
+const SECRET_KEY = "secretkey23456";
+
+const  app  =  express();
+const  router  =  express.Router();
+app.use(cors())
+
+router.use(bodyParser.urlencoded({ extended:  false }));
+router.use(bodyParser.json());
+const database = new sqlite3.Database("./my.db");
+
+const  createUsersTable  = () => {
+    const  sqlQuery  =  `
+        CREATE TABLE IF NOT EXISTS users (
+        id integer PRIMARY KEY,
+        name text,
+        email text UNIQUE,
+        password text)`;
+
+    return  database.run(sqlQuery);
+}
+
+const  findUserByEmail  = (email, cb) => {
+    return  database.get(`SELECT * FROM users WHERE email = ?`,[email], (err, row) => {
+        cb(err, row)
+    });
+}
+
+const  createUser  = (user, cb) => {
+    return  database.run('INSERT INTO users (name, email, password) VALUES (?,?,?)',user, (err) => {
+        cb(err)
+    });
+}
+
+createUsersTable();
+
+router.get('/', (req, res) => {
+    res.status(200).send('This is an authentication server');
+});
+
+router.post('/register', (req, res) => {
+
+    const  name  =  req.body.name;
+    const  email  =  req.body.email;
+    console.log(req.body);
+    const  password  =  bcrypt.hashSync(req.body.password);
+
+    createUser([name, email, password], (err)=>{
+        if(err) return  res.status(500).send("Server error!");
+        findUserByEmail(email, (err, user)=>{
+            if (err) return  res.status(500).send('Server error!');
+            const  expiresIn  =  24  *  60  *  60;
+            const  accessToken  =  jwt.sign({ id:  user.id }, SECRET_KEY, {
+                expiresIn:  expiresIn
+            });
+            res.status(200).send({ "user":  user, "access_token":  accessToken, "expires_in":  expiresIn
+            });
+        });
+    });
+});
+
+
+router.post('/login', (req, res) => {
+    const  email  =  req.body.email;
+    const  password  =  req.body.password;
+    findUserByEmail(email, (err, user)=>{
+        if (err) return  res.status(500).send('Server error!');
+        if (!user) return  res.status(404).send('User not found!');
+        const  result  =  bcrypt.compareSync(password, user.password);
+        if(!result) return  res.status(401).send('Password not valid!');
+
+        const  expiresIn  =  24  *  60  *  60;
+        const  accessToken  =  jwt.sign({ id:  user.id }, SECRET_KEY, {
+            expiresIn:  expiresIn
+        });
+        res.status(200).send({ "user":  user, "access_token":  accessToken, "expires_in":  expiresIn});
+    });
+});
+
+app.use(router);
+const  port  =  process.env.PORT  ||  3000;
+const  server  =  app.listen(port, () => {
+    console.log('Server listening at http://localhost:'  +  port);
+});
+
+user.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//-----------------------------------------------------------------------------------------------------------------
+export interface User {
+    id: number;
+    name: string;
+    email: string;
+    password: string;
+}
+
+app-routing.module.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//-----------------------------------------------------------------------------------------------------------------
+import { NgModule } from '@angular/core';
+import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
+
+const routes: Routes = [
+  {
+    path: 'members',
+    loadChildren: () => import('./tabs/tabs.module').then(m => m.TabsPageModule)
+  },
+  {
+    path: '',
+    loadChildren: () => import('./login/login.module').then( m => m.LoginPageModule)
+  },
+  {
+    path: 'register',
+    loadChildren: () => import('./register/register.module').then( m => m.RegisterPageModule)
+  }
+];
+@NgModule({
+  imports: [
+    RouterModule.forRoot(routes, { preloadingStrategy: PreloadAllModules })
+  ],
+  exports: [RouterModule]
+})
+export class AppRoutingModule {}
+
+app.component.spec.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//-----------------------------------------------------------------------------------------------------------------
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed, async } from '@angular/core/testing';
+
+import { Platform } from '@ionic/angular';
+import { SplashScreen } from '@ionic-native/splash-screen/ngx';
+import { StatusBar } from '@ionic-native/status-bar/ngx';
+
+import { AppComponent } from './app.component';
+
+describe('AppComponent', () => {
+
+  let statusBarSpy, splashScreenSpy, platformReadySpy, platformSpy;
+
+  beforeEach(async(() => {
+    statusBarSpy = jasmine.createSpyObj('StatusBar', ['styleDefault']);
+    splashScreenSpy = jasmine.createSpyObj('SplashScreen', ['hide']);
+    platformReadySpy = Promise.resolve();
+    platformSpy = jasmine.createSpyObj('Platform', { ready: platformReadySpy });
+
+    TestBed.configureTestingModule({
+      declarations: [AppComponent],
+      schemas: [CUSTOM_ELEMENTS_SCHEMA],
+      providers: [
+        { provide: StatusBar, useValue: statusBarSpy },
+        { provide: SplashScreen, useValue: splashScreenSpy },
+        { provide: Platform, useValue: platformSpy },
+      ],
+    }).compileComponents();
+  }));
+
+  it('should create the app', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.debugElement.componentInstance;
+    expect(app).toBeTruthy();
+  });
+
+  it('should initialize the app', async () => {
+    TestBed.createComponent(AppComponent);
+    expect(platformSpy.ready).toHaveBeenCalled();
+    await platformReadySpy;
+    expect(statusBarSpy.styleDefault).toHaveBeenCalled();
+    expect(splashScreenSpy.hide).toHaveBeenCalled();
+  });
+
+  // TODO: add more tests!
+
+
+  it('should be created', () => {
+    expect(component instanceof AppComponent).toBe(true);
+  });
+
+  it('should have two pages', () => {
+    expect(component.pages.length).toBe(2);
+  });  
+});
+
+UClassify.page.spec.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//-----------------------------------------------------------------------------------------------------------------
+import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { IonicModule } from '@ionic/angular';
+import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
+
+import { UClassifyPage } from './UClassify.page';
+
+describe('Tab1Page', () => {
+  let component: UClassifyPage;
+  let fixture: ComponentFixture<UClassifyPage>;
+
+  beforeEach(async(() => {
+    TestBed.configureTestingModule({
+      declarations: [UClassifyPage],
+      imports: [IonicModule.forRoot(), ExploreContainerComponentModule]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(UClassifyPage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }));
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+  
+  it('should have expected <ion-title> text', () => {
+    fixture.detectChanges();
+    const title = de.nativeElement;
+    expect(title.innerText).toMatch('UClassify',
+        '<ion-title> should say "UClassify"');
+  });
+  
+});
+
+UClassify.page.html
+<!-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//---------------------------------------------------------------------------------------------------------------->
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      UClassify
+    </ion-title>
+    <ion-button slot="end" color="light" (click)="logout()">Logout</ion-button>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item-divider>
+    <ion-label >Enter Text: </ion-label>
+    <ion-input type="text" placeholder="Statement" [(ngModel)]="searchTerm"></ion-input>
+    <ion-button (click)="btnClick()">Submit</ion-button>
+  </ion-item-divider>
+
+  <ion-card *ngIf="item">
+    <ion-card-header>
+      <ion-card-title>
+        Statement Results
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content text-center>
+      The statement is {{item.positive * 100}}% positive and {{item.negative * 100}}% negative.
+    </ion-card-content>
+  </ion-card>
+</ion-content>
+
+tabs.page.html
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//-----------------------------------------------------------------------------------------------------------------
+<ion-tabs>
+
+  <ion-tab-bar slot="bottom">
+    <ion-tab-button tab="UClassify">
+      <ion-icon name="square"></ion-icon>
+      <ion-label>UClassify</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="Movies">
+      <ion-icon name="square"></ion-icon>
+      <ion-label>Movies</ion-label>
+    </ion-tab-button>
+  </ion-tab-bar>
+
+</ion-tabs>
+
+tabs-routing.module.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//-----------------------------------------------------------------------------------------------------------------
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { TabsPage } from './tabs.page';
+
+const routes: Routes = [
+  {
+    path: '',
+    component: TabsPage,
+    children: [
+      {
+        path: 'UClassify',
+        children: [
+          {
+            path: '',
+            loadChildren: () =>
+              import('../UClassify/UClassify.module').then(m => m.Tab1PageModule)
+          }
+        ]
+      },
+      {
+        path: 'Movies',
+        children: [
+          {
+            path: '',
+            loadChildren: () =>
+              import('../Movies/Movies.module').then(m => m.Tab2PageModule)
+          }
+        ]
+      },
+      {
+        path: 'Movies/:id',
+        loadChildren: () => import('../movie-details/movie-details.module').then( m => m.MovieDetailsPageModule)
+      },
+      {
+        path: '',
+        redirectTo: 'UClassify',
+        pathMatch: 'full'
+      }
+    ]
+  },
+  {
+    path: '',
+    redirectTo: '/members/UClassify',
+    pathMatch: 'full'
+  }
+];
+
+@NgModule({
+  imports: [RouterModule.forChild(routes)],
+  exports: [RouterModule]
+})
+export class TabsPageRoutingModule {}
+
+movie.service.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://ionicacademy.com/ionic-4-app-api-calls/
+//-----------------------------------------------------------------------------------------------------------------
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+export enum SearchType {
+  all = '',
+  movie = 'movie',
+  series = 'series',
+  episode = 'episode'
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MovieService {
+  url = 'http://www.omdbapi.com/';
+  apiKey = 'e60b8e2e';
+
+  constructor(private http: HttpClient) { }
+
+  searchData(title: string, type: SearchType): Observable<any> {
+    return this.http.get(`${this.url}?s=${encodeURI(title)}&type=${type}&apikey=${this.apiKey}`).pipe(
+        map(results => results['Search'])
+    );
+  }
+
+  getDetails(id) {
+    return this.http.get(`${this.url}?i=${id}&plot=full&apikey=${this.apiKey}`);
+  }
+}
+
+auth-response.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//-----------------------------------------------------------------------------------------------------------------
+export interface AuthResponse {
+    user: {
+        id: number,
+        name: string,
+        email: string,
+        access_token: string,
+        expires_in: number
+    }
+}
+
+auth.service.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//-----------------------------------------------------------------------------------------------------------------
+import { Injectable } from '@angular/core';
+import { JwtHelperService } from '@auth0/angular-jwt';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { Platform, AlertController } from '@ionic/angular';
+import { tap, catchError  } from 'rxjs/operators';
+import { Storage } from '@ionic/storage';
+import { User } from '../user';
+import { AuthResponse } from './auth-response';
+
+const helper = new JwtHelperService();
+const TOKEN_KEY = 'jwt-token';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private AUTH_SERVER_ADDRESS: string  =  'http://localhost:3000';
+  private userData = new BehaviorSubject(false);
+  private LoggedIn = false;
+
+  constructor(private storage: Storage,
+              private http: HttpClient,
+              private plt: Platform,
+              private router: Router,
+              private alertController: AlertController) {  }
+
+  register(user: User): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.AUTH_SERVER_ADDRESS}/register`, user).pipe(
+        tap(async (res: AuthResponse ) => {
+
+          if (res.user) {
+            await this.storage.set('ACCESS_TOKEN', res.user.access_token);
+            await this.storage.set('EXPIRES_IN', res.user.expires_in);
+            this.userData.next(true);
+          }
+        })
+    );
+  }
+
+  login(user: User): Observable<AuthResponse> {
+    return this.http.post(`${this.AUTH_SERVER_ADDRESS}/login`, user).pipe(
+        tap(async (res: AuthResponse) => {
+
+          if (res.user) {
+            await this.storage.set('"ACCESS_TOKEN', res.user.access_token);
+            await this.storage.set('EXPIRES_IN', res.user.expires_in);
+            this.userData.next(true);
+            this.LoggedIn = true;
+          }
+        })
+    );
+  }
+
+  getUser() {
+    return this.userData.getValue();
+  }
+
+  isloggedIn() {
+    return this.LoggedIn;
+  }
+
+  async logout() {
+    await this.storage.remove('ACCESS_TOKEN');
+    await this.storage.remove('EXPIRES_IN');
+    this.userData.next(false);
+    this.LoggedIn = false;
+    this.router.navigateByUrl('/');
+  }
+
+  async showAlert(msg) {
+    const alert = await this.alertController.create({
+      message: msg,
+      header: 'Error',
+      buttons: ['OK']
+    });
+    await alert.present();
+  }
+}
+
+auth.guard.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//-----------------------------------------------------------------------------------------------------------------
+import { AuthService} from '../service/auth.service';
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { AlertController } from '@ionic/angular';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(private router: Router, private auth: AuthService, private alertCtrl: AlertController) { }
+
+  canActivate(
+    next: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot): Observable<boolean> | Promise<boolean> | boolean {
+      if (this.auth.isloggedIn) {
+          return true;
+      } else {
+          this.alertCtrl.create({
+              header: 'Unauthorized',
+              message: 'You are not allowed to access that page.',
+              buttons: ['OK']
+          }).then(alert => alert.present());
+
+          this.router.navigateByUrl('/');
+          return false;
+      }
+  }
+}
+
+login.page.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+//-----------------------------------------------------------------------------------------------------------------
+import { Component, OnInit } from '@angular/core';
+import { AuthService} from '../service/auth.service';
+import { ToastController  } from '@ionic/angular';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.page.html',
+  styleUrls: ['./login.page.scss'],
+})
+export class LoginPage implements OnInit {
+
+  constructor(private auth: AuthService,
+              private router: Router,
+              public toastController: ToastController) { }
+
+  ngOnInit() {
+  }
+
+  login(form) {
+    this.auth.login(form.value).subscribe(async res => {
+      if (res) {
+          this.router.navigateByUrl('/members');
+        }
+      },
+        async error => { this.presentToast(); });
+  }
+
+  async presentToast() {
+    const toast = await this.toastController.create({
+      message: 'Incorrect Email/Password Combination',
+      duration: 2000,
+      position: 'top',
+      color: 'danger'
+    });
+    await toast.present();
+  }
+}
+
+login.page.html
+<!-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//---------------------------------------------------------------------------------------------------------------->
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Login</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form #form="ngForm" (ngSubmit)="login(form)">
+  <ion-row>
+    <ion-col size="12" size-sm="10" offset-sm="1" size-md="8" offset-md="2" size-lg="6" offset-lg="3" size-xl="4"
+             offset-xl="4">
+
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title class="ion-text-center">Your Account</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+
+          <ion-item lines="none">
+            <ion-label position="stacked">Email</ion-label>
+            <ion-input type="email" placeholder="Email" name="email" ngModel required></ion-input>
+          </ion-item>
+
+          <ion-item lines="none">
+            <ion-label position="stacked">Password</ion-label>
+            <ion-input type="password" placeholder="Password" name="password" ngModel required>
+            </ion-input>
+          </ion-item>
+
+          <ion-button type="submit" color="primary" [disabled]="form.invalid" expand="block">Login</ion-button>
+          <ion-button expand="block" color="secondary" routerLink="/register" routerDirection="forward">Register
+          </ion-button>
+
+        </ion-card-content>
+      </ion-card>
+
+    </ion-col>
+  </ion-row>
+  </form>
+</ion-content>
+
+register.page.html
+<!-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//---------------------------------------------------------------------------------------------------------------->
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Register</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form #form="ngForm" (ngSubmit)="register(form)">
+    <ion-row>
+      <ion-col size="12" size-sm="10" offset-sm="1" size-md="8" offset-md="2" size-lg="6" offset-lg="3" size-xl="4"
+               offset-xl="4">
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title class="ion-text-center">Create Account</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-item lines="none">
+              <ion-label position="stacked">Name</ion-label>
+              <ion-input type="text" placeholder="Name" name="name" ngModel required></ion-input>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label position="stacked">Email</ion-label>
+              <ion-input type="email" placeholder="Email" name="email" ngModel required></ion-input>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label position="stacked">Password</ion-label>
+              <ion-input type="password" placeholder="Password" name="password" ngModel required></ion-input>
+            </ion-item>
+
+            <ion-button type="submit" color="primary" [disabled]="form.invalid" expand="block">Register</ion-button>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </form>
+</ion-content>
+
+register.page.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://www.techiediaries.com/ionic/ionic-5-jwt-authentication-node-expressjs/
+// Adapted from https://devdactic.com/ionic-4-jwt-login/
+//-----------------------------------------------------------------------------------------------------------------
+import { Component, OnInit } from '@angular/core';
+import { Router } from  "@angular/router";
+import { AuthService } from "../service/auth.service";
+import {ToastController} from "@ionic/angular";
+
+@Component({
+  selector: 'app-register',
+  templateUrl: './register.page.html',
+  styleUrls: ['./register.page.scss'],
+})
+export class RegisterPage implements OnInit {
+
+  constructor(private  authService: AuthService,
+              private  router: Router,
+              public toastController: ToastController) { }
+
+  ngOnInit() {
+  }
+
+  register(form) {
+    this.authService.register(form.value).subscribe((res) => {
+      this.router.navigateByUrl('/');
+    },
+        async error => { this.presentToast(); });
+  }
+
+  async presentToast() {
+    const toast = await this.toastController.create({
+      message: 'Account using this email already exists',
+      duration: 2000,
+      position: 'top',
+      color: 'danger'
+    });
+    await toast.present();
+  }
+}
+
+Movies.page.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://ionicacademy.com/ionic-4-app-api-calls/
+//-----------------------------------------------------------------------------------------------------------------
+import { Component } from '@angular/core';
+import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../service/auth.service';
+import { MovieService, SearchType } from '../service/movie.service';
+
+@Component({
+  selector: 'app-tab2',
+  templateUrl: 'Movies.page.html',
+  styleUrls: ['Movies.page.scss']
+})
+export class MoviesPage {
+  results: Observable<any>;
+  searchTerm: string;
+  type: SearchType = SearchType.all;
+
+  constructor(private http: HttpClient, private movieService: MovieService, private auth: AuthService) {}
+
+  searchChanged() {
+    this.results = this.movieService.searchData(this.searchTerm, this.type);
+  }
+
+  logout() {
+    this.auth.logout();
+  }
+}
+
+Movies.page.html
+<!-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://ionicacademy.com/ionic-4-app-api-calls/
+//---------------------------------------------------------------------------------------------------------------->
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>
+      Movie Search
+    </ion-title>
+    <ion-button slot="end" color="light" (click)="logout()">Logout</ion-button>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-searchbar [(ngModel)]="searchTerm" (ionChange)="searchChanged()"></ion-searchbar>
+
+  <ion-item>
+    <ion-label>Select Searchtype</ion-label>
+    <ion-select [(ngModel)]="type" (ionChange)="searchChanged()">
+      <ion-select-option value="">All</ion-select-option>
+      <ion-select-option value="movie">Movie</ion-select-option>
+      <ion-select-option value="series">Series</ion-select-option>
+      <ion-select-option value="episode">Episode</ion-select-option>
+    </ion-select>
+  </ion-item>
+
+  <ion-list>
+
+    <ion-item button *ngFor="let item of (results | async)" [routerLink]="['/', 'members', 'Movies', item.imdbID]">
+      <ion-avatar slot="start">
+        <img [src]="item.Poster" *ngIf="item.Poster != 'N/A'">
+      </ion-avatar>
+
+      <ion-label text-wrap>
+        <h3>{{ item.Title }}</h3>
+        {{ item.Year }}
+      </ion-label>
+
+      <ion-icon slot="end" *ngIf="item.Type == 'movie'" name="videocam"></ion-icon>
+      <ion-icon slot="end" *ngIf="item.Type == 'series'" name="tv"></ion-icon>
+      <ion-icon slot="end" *ngIf="item.Type == 'game'" name="logo-game-controller-b"></ion-icon>
+
+    </ion-item>
+
+  </ion-list>
+</ion-content>
+
+movie-details.page.ts
+//-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://ionicacademy.com/ionic-4-app-api-calls/
+//-----------------------------------------------------------------------------------------------------------------
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { MovieService } from '../service/movie.service';
+import { AuthService } from '../service/auth.service';
+
+@Component({
+  selector: 'app-movie-details',
+  templateUrl: './movie-details.page.html',
+  styleUrls: ['./movie-details.page.scss'],
+})
+export class MovieDetailsPage implements OnInit {
+  information;
+
+  constructor(private activatedRoute: ActivatedRoute,
+              private movieService: MovieService,
+              private auth: AuthService) { }
+
+  ngOnInit() {
+    // Get the ID that was passed with the URL
+    const id = this.activatedRoute.snapshot.paramMap.get('id');
+
+    // Get the information from the API
+    this.movieService.getDetails(id).subscribe(result => {
+      this.information = result;
+    });
+  }
+
+  openWebsite() {
+    window.open(this.information.Website, '_blank');
+  }
+
+  logout() {
+    this.auth.logout();
+  }
+}
+
+movie-details.page.html
+<!-----------------------------------------------------------------------------------------------------------------
+// CS 5551
+// Lab 4
+// Jonathan Wolfe
+// Bill Yerkes
+// Create a simple ionic application using any of the ionic templates [tabs, sidemenu]
+//     Make changes to the template to display
+//     1. Login and Registration Activities
+//     The application must have a sign up and login activities.
+//
+//     2. A Main page
+//     The Page should be Mashup of at least Two Web Services (refer to the web services
+//     from the spreadsheet). One of them should be from the list of knowledge/Machine
+//     learning/AI services and that you haven’t used in your previous work.
+//
+//     3. Testing
+//     Write at least 3-unit test cases related to your application.
+//
+//     Deploy the application to android device/ web/ ionic lab
+//
+// Adapted from https://ionicacademy.com/ionic-4-app-api-calls/
+//---------------------------------------------------------------------------------------------------------------->
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ information?.Genre }}</ion-title>
+    <ion-button slot="end" color="light" (click)="logout()">Logout</ion-button>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-card *ngIf="information">
+    <ion-card-header>
+      <ion-card-title>
+        {{ information.Title }}
+      </ion-card-title>
+      <ion-card-subtitle>
+        {{ information.Year }}
+      </ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content text-center>
+      <img [src]="information.Poster" class="info-img">
+      {{ information.Plot }}
+
+      <ion-item lines="none">
+        <ion-icon name="star-half" slot="start"></ion-icon>
+        <ion-label>{{ information.imdbRating }}</ion-label>
+      </ion-item>
+
+      <ion-item lines="none">
+        <ion-icon name="clipboard" slot="start"></ion-icon>
+        <ion-label text-wrap>{{ information.Director }}</ion-label>
+      </ion-item>
+
+      <ion-item lines="none">
+        <ion-icon name="contacts" slot="start"></ion-icon>
+        <ion-label text-wrap>{{ information.Actors }}</ion-label>
+      </ion-item>
+
+      <ion-button expand="full" (click)="openWebsite()" *ngIf="information.Website && information.Website != 'N/A'">
+        <ion-icon name="open" slot="start"></ion-icon>
+        Open Website
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+</ion-content>
