@@ -44,4 +44,12 @@ describe('AppComponent', () => {
 
   // TODO: add more tests!
 
+
+  it('should be created', () => {
+    expect(component instanceof AppComponent).toBe(true);
+  });
+
+  it('should have two pages', () => {
+    expect(component.pages.length).toBe(2);
+  });  
 });
