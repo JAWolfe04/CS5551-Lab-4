@@ -22,4 +22,12 @@ describe('Tab1Page', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+  
+  it('should have expected <ion-title> text', () => {
+    fixture.detectChanges();
+    const title = de.nativeElement;
+    expect(title.innerText).toMatch('UClassify',
+        '<ion-title> should say "UClassify"');
+  });
+  
 });
